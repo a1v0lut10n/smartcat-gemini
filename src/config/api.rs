@@ -20,6 +20,7 @@ pub enum Api {
     Groq,
     Mistral,
     Openai,
+    Gemini,
 }
 
 impl FromStr for Api {
@@ -32,6 +33,7 @@ impl FromStr for Api {
             "mistral" => Ok(Api::Mistral),
             "groq" => Ok(Api::Groq),
             "anthropic" => Ok(Api::Anthropic),
+            "gemini" => Ok(Api::Gemini),
             _ => Err(()),
         }
     }
@@ -45,6 +47,7 @@ impl ToString for Api {
             Api::Mistral => "mistral".to_string(),
             Api::Groq => "groq".to_string(),
             Api::Anthropic => "anthropic".to_string(),
+            Api::Gemini => "gemini".to_string(),
             v => panic!(
                 "{:?} is not implemented, use one among {:?}",
                 v,
@@ -119,7 +122,7 @@ impl ApiConfig {
             api_key_command: None,
             api_key: None,
             url: String::from("https://api.openai.com/v1/chat/completions"),
-            default_model: Some(String::from("gpt-4")),
+            default_model: Some(String::from("gpt-4o")),
             version: None,
             timeout_seconds: None,
         }
@@ -157,6 +160,19 @@ impl ApiConfig {
             timeout_seconds: None,
         }
     }
+
+    pub(super) fn gemini() -> Self {
+        ApiConfig {
+            api_key_command: None,
+            api_key: None,
+            url: String::from(
+                "https://generativelanguage.googleapis.com/v1beta/models/{}:generateContent?key={}",
+            ),
+            default_model: Some(String::from("gemini-1.5-flash-latest")),
+            version: None,
+            timeout_seconds: None
+        }
+    }
 }
 
 pub(super) fn api_keys_path() -> PathBuf {
@@ -170,6 +186,7 @@ pub(super) fn generate_api_keys_file() -> std::io::Result<()> {
     api_config.insert(Api::Mistral.to_string(), ApiConfig::mistral());
     api_config.insert(Api::Groq.to_string(), ApiConfig::groq());
     api_config.insert(Api::Anthropic.to_string(), ApiConfig::anthropic());
+    api_config.insert(Api::Gemini.to_string(), ApiConfig::gemini());
 
     // Default, should override one of the above
     api_config.insert(Prompt::default().api.to_string(), ApiConfig::default());
