@@ -1,3 +1,5 @@
+use log::debug;
+
 pub const IS_NONINTERACTIVE_ENV_VAR: &str = "SMARTCAT_NONINTERACTIVE";
 
 /// clean error logging
@@ -8,6 +10,7 @@ pub fn handle_api_response<T: serde::de::DeserializeOwned + Into<String>>(
     if response.status().is_success() {
         response.json::<T>().unwrap().into()
     } else {
+        debug!("API request failed with status {}", status);
         let error_text = response.text().unwrap();
         panic!("API request failed with status {}: {}", status, error_text);
     }

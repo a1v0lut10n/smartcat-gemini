@@ -298,6 +298,7 @@ mod tests {
             (Api::Mistral.to_string(), ApiConfig::mistral()),
             (Api::Groq.to_string(), ApiConfig::groq()),
             (Api::Anthropic.to_string(), ApiConfig::anthropic()),
+	    (Api::Gemini.to_string(), ApiConfig::gemini()),
         ] {
             let config = api_config.get(&api).unwrap();
             assert_eq!(

@@ -1,7 +1,7 @@
 use std::time::Duration;
 
-use super::request_schemas::{AnthropicPrompt, OpenAiPrompt};
-use super::response_schemas::{AnthropicResponse, OllamaResponse, OpenAiResponse};
+use super::request_schemas::{AnthropicPrompt, GeminiPrompt, OpenAiPrompt};
+use super::response_schemas::{AnthropicResponse, OllamaResponse, OpenAiResponse, GeminiResponse};
 
 use crate::config::{
     api::{Api, ApiConfig},
@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 enum PromptFormat {
     OpenAi(OpenAiPrompt),
     Anthropic(AnthropicPrompt),
+    Gemini(GeminiPrompt),
 }
 
 pub fn post_prompt_and_get_answer(
@@ -53,13 +54,25 @@ pub fn post_prompt_and_get_answer(
             PromptFormat::OpenAi(OpenAiPrompt::from(prompt.clone()))
         }
         Api::Anthropic => PromptFormat::Anthropic(AnthropicPrompt::from(prompt.clone())),
+	    Api::Gemini => PromptFormat::Gemini(GeminiPrompt::from(prompt.clone())),
         Api::AnotherApiForTests => panic!("This api is not made for actual use."),
     };
-
-    let request = client
-        .post(&api_config.url)
-        .header("Content-Type", "application/json")
-        .json(&prompt_format);
+    
+    let request = match prompt.api {
+        Api::Gemini => {
+            let formatted_url = api_config.url.clone()
+                .replacen("{}", &prompt.model.unwrap(), 1)
+                .replacen("{}", &api_config.get_api_key(), 1);
+            client
+                .post(&formatted_url).json(&prompt_format)
+        }
+        _ => {
+            client
+                .post(&api_config.url)
+                .header("Content-Type", "application/json")
+                .json(&prompt_format)
+        }
+    };
 
     // Add auth if necessary
     let request = match prompt.api {
@@ -84,6 +97,7 @@ pub fn post_prompt_and_get_answer(
             handle_api_response::<OpenAiResponse>(request.send()?)
         }
         Api::Anthropic => handle_api_response::<AnthropicResponse>(request.send()?),
+	    Api::Gemini => handle_api_response::<GeminiResponse>(request.send()?),
         Api::AnotherApiForTests => unreachable!(),
     };
     Ok(Message::assistant(&response_text))

@@ -65,3 +65,29 @@ impl From<Prompt> for AnthropicPrompt {
         }
     }
 }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GeminiPrompt {
+    pub contents: Vec<Content>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Part {
+    pub text: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Content {
+    pub parts: Vec<Part>,
+    pub role: String,
+}
+
+impl From<Prompt> for GeminiPrompt {
+    fn from(prompt: Prompt) -> Self {
+        let contents = vec![Content {
+            parts: prompt.messages.iter().map(|msg| Part { text: msg.content.clone() }).collect(),
+            role: "user".to_string(),
+        }];
+        GeminiPrompt { contents }
+    }
+}
