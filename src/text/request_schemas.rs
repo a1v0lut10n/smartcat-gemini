@@ -25,55 +25,36 @@ pub(super) struct AnthropicPrompt {
 
 impl From<Prompt> for OpenAiPrompt {
     fn from(prompt: Prompt) -> OpenAiPrompt {
-        if let Some(ref model) = prompt.model {
-            match model.as_str() {
-                "o1-preview" => {
-                    let merged_messages =
-                        prompt
-                            .messages
-                            .into_iter()
-                            .fold(Vec::new(), |mut acc: Vec<Message>, mut message| {
-                                if message.role == "system" {
-                                    message.role = "user".to_string();
-                                }
-                                match acc.last_mut() {
-                                    Some(last_message) if last_message.role == message.role => {
-                                        last_message.content.push_str("\n\n");
-                                        last_message.content.push_str(&message.content);
-                                    }
-                                    _ => acc.push(message),
-                                }
-                                acc
-                            });
-                    OpenAiPrompt {
-                        model: prompt
-                            .model
-                            .expect("model must be specified either in the api config or in the prompt config"),
-                        messages: merged_messages,
-                        temperature: prompt.temperature, stream: prompt.stream,
+        let model = prompt
+            .model
+            .expect("model must be specified either in the api config or in the prompt config");
 
+        let messages = if model == "o1-preview" {
+            prompt
+                .messages
+                .into_iter()
+                .fold(Vec::new(), |mut acc: Vec<Message>, mut message| {
+                    if message.role == "system" {
+                        message.role = "user".to_string();
                     }
-                }
-                _ => {
-                    OpenAiPrompt {
-                        model: prompt
-                            .model
-                            .expect("model must be specified either in the api config or in the prompt config"),
-                        messages: prompt.messages,
-                        temperature: prompt.temperature,
-                        stream: prompt.stream,
-                }
-            }
-        }
+                    match acc.last_mut() {
+                        Some(last_message) if last_message.role == message.role => {
+                            last_message.content.push_str("\n\n");
+                            last_message.content.push_str(&message.content);
+                        }
+                        _ => acc.push(message),
+                    }
+                    acc
+                })
         } else {
-            OpenAiPrompt {
-                model: prompt
-                    .model
-                    .expect("model must be specified either in the api config or in the prompt config"),
-                messages: prompt.messages,
-                temperature: prompt.temperature,
-                stream: prompt.stream,
-            }
+            prompt.messages
+        };
+
+        OpenAiPrompt {
+            model,
+            messages,
+            temperature: prompt.temperature,
+            stream: prompt.stream,
         }
     }
 }
