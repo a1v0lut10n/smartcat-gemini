@@ -25,11 +25,34 @@ pub(super) struct AnthropicPrompt {
 
 impl From<Prompt> for OpenAiPrompt {
     fn from(prompt: Prompt) -> OpenAiPrompt {
+        let model = prompt
+            .model
+            .expect("model must be specified either in the api config or in the prompt config");
+
+        let messages = if model == "o1-preview" {
+            prompt
+                .messages
+                .into_iter()
+                .fold(Vec::new(), |mut acc: Vec<Message>, mut message| {
+                    if message.role == "system" {
+                        message.role = "user".to_string();
+                    }
+                    match acc.last_mut() {
+                        Some(last_message) if last_message.role == message.role => {
+                            last_message.content.push_str("\n\n");
+                            last_message.content.push_str(&message.content);
+                        }
+                        _ => acc.push(message),
+                    }
+                    acc
+                })
+        } else {
+            prompt.messages
+        };
+
         OpenAiPrompt {
-            model: prompt
-                .model
-                .expect("model must be specified either in the api config or in the prompt config"),
-            messages: prompt.messages,
+            model,
+            messages,
             temperature: prompt.temperature,
             stream: prompt.stream,
         }
