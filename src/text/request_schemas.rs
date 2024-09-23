@@ -25,13 +25,55 @@ pub(super) struct AnthropicPrompt {
 
 impl From<Prompt> for OpenAiPrompt {
     fn from(prompt: Prompt) -> OpenAiPrompt {
-        OpenAiPrompt {
-            model: prompt
-                .model
-                .expect("model must be specified either in the api config or in the prompt config"),
-            messages: prompt.messages,
-            temperature: prompt.temperature,
-            stream: prompt.stream,
+        if let Some(ref model) = prompt.model {
+            match model.as_str() {
+                "o1-preview" => {
+                    let merged_messages =
+                        prompt
+                            .messages
+                            .into_iter()
+                            .fold(Vec::new(), |mut acc: Vec<Message>, mut message| {
+                                if message.role == "system" {
+                                    message.role = "user".to_string();
+                                }
+                                match acc.last_mut() {
+                                    Some(last_message) if last_message.role == message.role => {
+                                        last_message.content.push_str("\n\n");
+                                        last_message.content.push_str(&message.content);
+                                    }
+                                    _ => acc.push(message),
+                                }
+                                acc
+                            });
+                    OpenAiPrompt {
+                        model: prompt
+                            .model
+                            .expect("model must be specified either in the api config or in the prompt config"),
+                        messages: merged_messages,
+                        temperature: prompt.temperature, stream: prompt.stream,
+
+                    }
+                }
+                _ => {
+                    OpenAiPrompt {
+                        model: prompt
+                            .model
+                            .expect("model must be specified either in the api config or in the prompt config"),
+                        messages: prompt.messages,
+                        temperature: prompt.temperature,
+                        stream: prompt.stream,
+                }
+            }
+        }
+        } else {
+            OpenAiPrompt {
+                model: prompt
+                    .model
+                    .expect("model must be specified either in the api config or in the prompt config"),
+                messages: prompt.messages,
+                temperature: prompt.temperature,
+                stream: prompt.stream,
+            }
         }
     }
 }
